@@ -1,17 +1,84 @@
-import React, { useRef } from 'react';
-import type { MonthlyInput } from '../types/tax';
+import React, { useRef, useState } from 'react';
+import type { MonthlyInput, TaxSimulationSummary } from '../types/tax';
 import { formatCurrency, formatPeriodShort, getNextPeriod } from '../utils/formatters';
-import { Plus, Trash2, Upload, Download, Sparkles, FileSpreadsheet } from 'lucide-react';
+import { Plus, Trash2, Upload, Download, Sparkles, FileSpreadsheet, SlidersHorizontal } from 'lucide-react';
 import * as XLSX from 'xlsx';
+import { TaxAdjustmentsModal } from './TaxAdjustmentsModal';
 
 interface Props {
   months: MonthlyInput[];
   onChange: (months: MonthlyInput[]) => void;
   onDownloadTemplate: () => void;
+  pisSummary?: TaxSimulationSummary;
+  cofinsSummary?: TaxSimulationSummary;
 }
 
-export const MonthlyInputTable: React.FC<Props> = ({ months, onChange, onDownloadTemplate }) => {
+export const MonthlyInputTable: React.FC<Props> = ({
+  months,
+  onChange,
+  onDownloadTemplate,
+  pisSummary,
+  cofinsSummary,
+}) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [selectedMonthForAdjustments, setSelectedMonthForAdjustments] = useState<MonthlyInput | null>(null);
+
+  const hasAdjustments = (m: MonthlyInput) => {
+    return (
+      (m.pisOtherDebits ?? 0) > 0 ||
+      (m.pisBaseReduction ?? 0) > 0 ||
+      (m.pisBaseIncrease ?? 0) > 0 ||
+      (m.pisDebitReversal ?? 0) > 0 ||
+      (m.pisWithholdings ?? 0) > 0 ||
+      (m.pisOtherCredits ?? 0) > 0 ||
+      (m.pisCreditReversal ?? 0) > 0 ||
+      (m.pisExclusions ?? 0) > 0 ||
+      (m.cofinsOtherDebits ?? 0) > 0 ||
+      (m.cofinsBaseReduction ?? 0) > 0 ||
+      (m.cofinsBaseIncrease ?? 0) > 0 ||
+      (m.cofinsDebitReversal ?? 0) > 0 ||
+      (m.cofinsWithholdings ?? 0) > 0 ||
+      (m.cofinsOtherCredits ?? 0) > 0 ||
+      (m.cofinsCreditReversal ?? 0) > 0 ||
+      (m.cofinsExclusions ?? 0) > 0
+    );
+  };
+
+  const handleSaveMonthAdjustments = (updatedMonth: MonthlyInput) => {
+    const updated = months.map((m) => (m.id === updatedMonth.id ? updatedMonth : m));
+    onChange(updated);
+  };
+
+  const handleLoadPhotoExample = () => {
+    const newMonth: MonthlyInput = {
+      id: `foto-${Date.now()}`,
+      period: '2024-05',
+      // PIS da foto
+      pisDebit: 17641.62,
+      pisOtherDebits: 346.99,
+      pisBaseReduction: 2158.77,
+      pisBaseIncrease: 0,
+      pisDebitReversal: 0,
+      pisWithholdings: 0,
+      pisCredit: 16236.45,
+      pisOtherCredits: 0,
+      pisCreditReversal: 0,
+      pisExclusions: 0,
+      // COFINS da foto
+      cofinsDebit: 81258.36,
+      cofinsOtherDebits: 1695.37,
+      cofinsBaseReduction: 9943.44,
+      cofinsBaseIncrease: 0,
+      cofinsDebitReversal: 0,
+      cofinsWithholdings: 0,
+      cofinsCredit: 74786.06,
+      cofinsOtherCredits: 0,
+      cofinsCreditReversal: 0,
+      cofinsExclusions: 0,
+      notes: 'Exemplo do Sistema Contábil (Foto)',
+    };
+    onChange([...months, newMonth]);
+  };
 
   const handleUpdate = (id: string, field: keyof MonthlyInput, value: any) => {
     const updated = months.map((m) => {
@@ -177,6 +244,15 @@ export const MonthlyInputTable: React.FC<Props> = ({ months, onChange, onDownloa
           </button>
 
           <button
+            onClick={handleLoadPhotoExample}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-amber-800 bg-amber-50 border border-amber-300 hover:bg-amber-100 rounded-lg shadow-sm transition-colors"
+            title="Adiciona um mês com os valores exatos da foto de exemplo"
+          >
+            <Sparkles className="w-3.5 h-3.5 text-amber-600" />
+            Exemplo da Foto
+          </button>
+
+          <button
             onClick={handleAddSixMonths}
             className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-indigo-700 bg-indigo-50 border border-indigo-200 hover:bg-indigo-100 rounded-lg shadow-sm transition-colors"
           >
@@ -212,6 +288,9 @@ export const MonthlyInputTable: React.FC<Props> = ({ months, onChange, onDownloa
               <th className="py-3 px-4 text-right bg-emerald-50/40 text-emerald-900">
                 Crédito COFINS (R$)
               </th>
+              <th className="py-3 px-4 text-center border-l border-slate-200">
+                Ajustes Contábeis
+              </th>
               <th className="py-3 px-4">Identificação / Detalhes</th>
               <th className="py-3 px-3 text-center w-12">Ação</th>
             </tr>
@@ -219,13 +298,15 @@ export const MonthlyInputTable: React.FC<Props> = ({ months, onChange, onDownloa
           <tbody className="divide-y divide-slate-100 font-medium">
             {months.length === 0 ? (
               <tr>
-                <td colSpan={7} className="py-12 text-center text-slate-400">
+                <td colSpan={8} className="py-12 text-center text-slate-400">
                   <FileSpreadsheet className="w-8 h-8 mx-auto text-slate-300 mb-2" />
                   Nenhum mês cadastrado. Clique em <strong>"Adicionar Mês"</strong> ou <strong>"+6 Meses"</strong> para começar.
                 </td>
               </tr>
             ) : (
-              months.map((m) => (
+              months.map((m) => {
+                const isAdjusted = hasAdjustments(m);
+                return (
                 <tr key={m.id} className="hover:bg-slate-50/80 transition-colors">
                   <td className="py-2.5 px-4 font-mono font-bold text-slate-700">
                     <input
@@ -296,6 +377,28 @@ export const MonthlyInputTable: React.FC<Props> = ({ months, onChange, onDownloa
                     />
                   </td>
 
+                  {/* Coluna Ajustes */}
+                  <td className="py-2.5 px-4 text-center border-l border-slate-100">
+                    <button
+                      onClick={() => setSelectedMonthForAdjustments(m)}
+                      className={`inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-semibold rounded-lg border transition-all ${
+                        isAdjusted
+                          ? 'bg-amber-50 text-amber-900 border-amber-300 hover:bg-amber-100 shadow-xs'
+                          : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100'
+                      }`}
+                      title="Configurar deduções da BC, outros débitos, estornos e retenções"
+                    >
+                      <SlidersHorizontal className="w-3.5 h-3.5" />
+                      <span>{isAdjusted ? 'Ajustes Ativos' : 'Ajustes'}</span>
+                    </button>
+                    {isAdjusted && (
+                      <div className="text-[10px] text-amber-700 font-medium mt-0.5">
+                        {((m.pisBaseReduction ?? 0) > 0 || (m.cofinsBaseReduction ?? 0) > 0) && 'Redução BC '}
+                        {((m.pisOtherDebits ?? 0) > 0 || (m.cofinsOtherDebits ?? 0) > 0) && '• Outros Déb'}
+                      </div>
+                    )}
+                  </td>
+
                   {/* Observações */}
                   <td className="py-2.5 px-4">
                     <input
@@ -318,7 +421,8 @@ export const MonthlyInputTable: React.FC<Props> = ({ months, onChange, onDownloa
                     </button>
                   </td>
                 </tr>
-              ))
+              );
+              })
             )}
           </tbody>
 
@@ -339,7 +443,7 @@ export const MonthlyInputTable: React.FC<Props> = ({ months, onChange, onDownloa
                 <td className="py-3 px-4 text-right font-mono text-emerald-700">
                   {formatCurrency(totalCofinsCredit)}
                 </td>
-                <td colSpan={2} className="py-3 px-4 text-right text-slate-400 font-normal">
+                <td colSpan={3} className="py-3 px-4 text-right text-slate-400 font-normal">
                   <button
                     onClick={handleClearAll}
                     className="text-xs text-slate-400 hover:text-red-600 underline"
@@ -352,6 +456,26 @@ export const MonthlyInputTable: React.FC<Props> = ({ months, onChange, onDownloa
           )}
         </table>
       </div>
+
+      {/* Modal de Ajustes Detalhados */}
+      {selectedMonthForAdjustments && (
+        <TaxAdjustmentsModal
+          isOpen={true}
+          onClose={() => setSelectedMonthForAdjustments(null)}
+          month={selectedMonthForAdjustments}
+          previousPisBalance={
+            pisSummary?.resultsByMonth.find(
+              (r) => r.period === selectedMonthForAdjustments.period
+            )?.previousBalance ?? 0
+          }
+          previousCofinsBalance={
+            cofinsSummary?.resultsByMonth.find(
+              (r) => r.period === selectedMonthForAdjustments.period
+            )?.previousBalance ?? 0
+          }
+          onSave={handleSaveMonthAdjustments}
+        />
+      )}
     </div>
   );
 };

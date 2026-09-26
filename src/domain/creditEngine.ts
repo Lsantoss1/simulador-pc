@@ -40,24 +40,60 @@ export const runTaxSimulation = (
   let totalPrescribed = 0;
 
   for (const month of sortedMonths) {
-    const debit = round2(taxType === 'PIS' ? month.pisDebit : month.cofinsDebit);
-    const creditGen = round2(taxType === 'PIS' ? month.pisCredit : month.cofinsCredit);
+    const isPIS = taxType === 'PIS';
 
-    totalDebits = round2(totalDebits + debit);
-    totalCreditsGenerated = round2(totalCreditsGenerated + creditGen);
+    const grossDebit = round2(isPIS ? month.pisDebit : month.cofinsDebit);
+    const otherDebits = round2(isPIS ? (month.pisOtherDebits ?? 0) : (month.cofinsOtherDebits ?? 0));
+    const baseReduction = round2(isPIS ? (month.pisBaseReduction ?? 0) : (month.cofinsBaseReduction ?? 0));
+    const baseIncrease = round2(isPIS ? (month.pisBaseIncrease ?? 0) : (month.cofinsBaseIncrease ?? 0));
+    const debitReversal = round2(isPIS ? (month.pisDebitReversal ?? 0) : (month.cofinsDebitReversal ?? 0));
+    const withholdings = round2(isPIS ? (month.pisWithholdings ?? 0) : (month.cofinsWithholdings ?? 0));
+
+    const grossCredit = round2(isPIS ? month.pisCredit : month.cofinsCredit);
+    const otherCredits = round2(isPIS ? (month.pisOtherCredits ?? 0) : (month.cofinsOtherCredits ?? 0));
+    const creditReversal = round2(isPIS ? (month.pisCreditReversal ?? 0) : (month.cofinsCreditReversal ?? 0));
+    const exclusions = round2(isPIS ? (month.pisExclusions ?? 0) : (month.cofinsExclusions ?? 0));
+
+    // Débito Líquido = (Total Débito + Outros Débitos + Ajuste BC Acréscimo) - (Ajuste BC Redução + Estorno Débito)
+    const netDebit = round2(
+      Math.max(0, (grossDebit + otherDebits + baseIncrease) - (baseReduction + debitReversal))
+    );
+
+    // Crédito Líquido = (Total Crédito + Outros Créditos) - (Estorno Créditos + Exclusão)
+    const netCredit = round2(
+      Math.max(0, (grossCredit + otherCredits) - (creditReversal + exclusions))
+    );
+
+    const details = {
+      grossDebit,
+      otherDebits,
+      baseReduction,
+      baseIncrease,
+      debitReversal,
+      netDebit,
+      withholdings,
+      grossCredit,
+      otherCredits,
+      creditReversal,
+      exclusions,
+      netCredit,
+    };
+
+    totalDebits = round2(totalDebits + netDebit);
+    totalCreditsGenerated = round2(totalCreditsGenerated + netCredit);
 
     // Saldo credor antes do mês atual
     const previousBalance = round2(
       activeBatches.reduce((sum, b) => sum + b.remainingAmount, 0)
     );
 
-    // Adiciona o crédito apurado no próprio mês como novo lote
-    if (creditGen > 0) {
+    // Adiciona o crédito líquido apurado no próprio mês como novo lote
+    if (netCredit > 0) {
       activeBatches.push({
         id: `gen-${month.id}-${month.period}`,
         originPeriod: month.period,
-        originalAmount: creditGen,
-        remainingAmount: creditGen,
+        originalAmount: netCredit,
+        remainingAmount: netCredit,
         isInitialStock: false,
       });
     }
@@ -65,10 +101,10 @@ export const runTaxSimulation = (
     // Garante ordenação PEPS (lotes mais antigos primeiro)
     activeBatches.sort((a, b) => a.originPeriod.localeCompare(b.originPeriod));
 
-    const totalAvailable = round2(previousBalance + creditGen);
+    const totalAvailable = round2(previousBalance + netCredit);
 
     // 3. Processamento do Abatimento via PEPS / FIFO
-    let debitToOffset = debit;
+    let debitToOffset = netDebit;
     const consumedBreakdown: CreditConsumptionDetail[] = [];
 
     for (const batch of activeBatches) {
@@ -88,11 +124,11 @@ export const runTaxSimulation = (
       });
     }
 
-    const monthCreditConsumed = round2(debit - Math.max(0, debitToOffset));
+    const monthCreditConsumed = round2(netDebit - Math.max(0, debitToOffset));
     totalCreditsConsumed = round2(totalCreditsConsumed + monthCreditConsumed);
 
-    // Se o débito superou todos os créditos disponíveis, gera imposto a pagar
-    const taxPayable = debitToOffset > 0.0001 ? round2(debitToOffset) : 0;
+    // Se o débito superou todos os créditos disponíveis, desconta eventuais retenções na fonte
+    const taxPayable = debitToOffset > 0.0001 ? round2(Math.max(0, debitToOffset - withholdings)) : 0;
     totalTaxPayable = round2(totalTaxPayable + taxPayable);
 
     // Checagem de prescrição (lotes com >= 60 meses no mês corrente)
@@ -124,8 +160,9 @@ export const runTaxSimulation = (
 
     resultsByMonth.push({
       period: month.period,
-      debit,
-      creditGenerated: creditGen,
+      debit: netDebit,
+      creditGenerated: netCredit,
+      details,
       previousBalance,
       totalAvailable,
       creditConsumed: monthCreditConsumed,

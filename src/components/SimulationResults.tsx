@@ -358,80 +358,183 @@ export const SimulationResults: React.FC<Props> = ({
                                 )}
                               </div>
 
-                              {/* 2. Memória de Abatimento PEPS (Quais meses foram consumidos) */}
-                              <div className="bg-white rounded-xl p-4 border border-slate-200 shadow-sm">
-                                <div className="flex items-center justify-between mb-3 border-b border-slate-100 pb-2">
-                                  <div className="flex items-center gap-2">
-                                    <span className="w-2.5 h-2.5 rounded-full bg-emerald-600" />
-                                    <h4 className="font-bold text-xs uppercase tracking-wider text-slate-800">
-                                      Memória de Abatimento PEPS no Mês ({formatPeriodShort(res.period)})
-                                    </h4>
-                                  </div>
-                                  <span className="text-xs font-bold text-slate-700">
-                                    Débito do Mês: {formatCurrency(res.debit)}
-                                  </span>
-                                </div>
-
-                                {hasConsumed ? (
-                                  <div className="space-y-2">
-                                    <p className="text-xs text-slate-600">
-                                      O débito de {formatCurrency(res.debit)} foi compensado consumindo prioritariamente os créditos mais antigos:
-                                    </p>
-                                    <div className="overflow-x-auto">
-                                      <table className="w-full text-xs text-left">
-                                        <thead>
-                                          <tr className="bg-slate-50 text-slate-600 border-b border-slate-200 font-semibold">
-                                            <th className="py-2 px-3">Competência de Origem</th>
-                                            <th className="py-2 px-3 text-right">Valor Consumido (R$)</th>
-                                            <th className="py-2 px-3 text-center">Idade no Momento do Consumo</th>
-                                            <th className="py-2 px-3">Regra Aplicada</th>
-                                          </tr>
-                                        </thead>
-                                        <tbody className="divide-y divide-slate-100">
-                                          {res.consumedBreakdown.map((item, cIdx) => (
-                                            <tr key={cIdx} className="hover:bg-slate-50/50">
-                                              <td className="py-2 px-3 font-semibold text-slate-800">
-                                                {formatPeriodShort(item.originPeriod)}
-                                              </td>
-                                              <td className="py-2 px-3 text-right font-mono font-bold text-indigo-700">
-                                                {formatCurrency(item.amountConsumed)}
-                                              </td>
-                                              <td className="py-2 px-3 text-center text-slate-600">
-                                                {item.monthsOldAtConsumption} {item.monthsOldAtConsumption === 1 ? 'mês decorrido' : 'meses decorridos'}
-                                              </td>
-                                              <td className="py-2 px-3 text-slate-500">
-                                                PEPS / FIFO (consumo do lote mais antigo)
-                                              </td>
-                                            </tr>
-                                          ))}
-                                        </tbody>
-                                      </table>
-                                    </div>
-                                  </div>
-                                ) : (
-                                  <div className="text-xs text-slate-500 py-2">
-                                    {res.debit === 0 ? (
-                                      'Não houve débito apurado nesta competência.'
-                                    ) : (
-                                      'Nenhum crédito disponível para abatimento.'
-                                    )}
-                                  </div>
-                                )}
-
-                                {res.taxPayable > 0 && (
-                                  <div className="mt-3 p-3 bg-rose-50 border border-rose-200 rounded-lg flex items-center justify-between text-xs text-rose-800">
-                                    <div className="flex items-center gap-2">
-                                      <AlertCircle className="w-4 h-4 text-rose-600 flex-shrink-0" />
-                                      <span>
-                                        Os créditos disponíveis foram insuficientes para abater todo o débito de {formatCurrency(res.debit)}.
+                                {/* 2. Detalhamento dos Ajustes Contábeis da Competência (Fiel à EFD / Foto) */}
+                                {res.details && (
+                                  <div className="bg-white rounded-xl p-4 border border-slate-200 shadow-sm">
+                                    <div className="flex items-center justify-between mb-3 border-b border-slate-100 pb-2">
+                                      <div className="flex items-center gap-2">
+                                        <span className="w-2.5 h-2.5 rounded-full bg-blue-600" />
+                                        <h4 className="font-bold text-xs uppercase tracking-wider text-slate-800">
+                                          Detalhamento dos Ajustes de Débito, Crédito e Base de Cálculo ({formatPeriodShort(res.period)})
+                                        </h4>
+                                      </div>
+                                      <span className="text-[11px] text-slate-500 font-mono">
+                                        Fórmula: Débito Líquido = (Débito + Outros + Acrésc.) - (Redução BC + Estorno)
                                       </span>
                                     </div>
-                                    <span className="font-bold font-mono text-sm">
-                                      DARF a Pagar: {formatCurrency(res.taxPayable)}
-                                    </span>
+
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
+                                      {/* Coluna Débitos */}
+                                      <div className="bg-slate-50/70 p-3.5 rounded-lg border border-slate-200/80 space-y-2">
+                                        <div className="font-bold text-[11px] uppercase tracking-wider text-slate-700 border-b border-slate-200 pb-1 flex justify-between">
+                                          <span>Débitos e Deduções</span>
+                                          <span className="text-blue-700">Líquido: {formatCurrency(res.details.netDebit)}</span>
+                                        </div>
+                                        <div className="flex justify-between py-0.5 text-slate-600">
+                                          <span>Total Débito (Bruto):</span>
+                                          <span className="font-mono font-semibold text-slate-800">{formatCurrency(res.details.grossDebit)}</span>
+                                        </div>
+                                        {res.details.otherDebits > 0 && (
+                                          <div className="flex justify-between py-0.5 text-amber-800">
+                                            <span>(+) Outros Débitos (M211/M611):</span>
+                                            <span className="font-mono font-semibold">+{formatCurrency(res.details.otherDebits)}</span>
+                                          </div>
+                                        )}
+                                        {res.details.baseReduction > 0 && (
+                                          <div className="flex justify-between py-0.5 text-blue-800 font-medium">
+                                            <span>(-) Ajuste BC Redução (ICMS/Exclusões):</span>
+                                            <span className="font-mono font-bold">-{formatCurrency(res.details.baseReduction)}</span>
+                                          </div>
+                                        )}
+                                        {res.details.baseIncrease > 0 && (
+                                          <div className="flex justify-between py-0.5 text-slate-700">
+                                            <span>(+) Ajuste BC Acréscimo:</span>
+                                            <span className="font-mono font-semibold">+{formatCurrency(res.details.baseIncrease)}</span>
+                                          </div>
+                                        )}
+                                        {res.details.debitReversal > 0 && (
+                                          <div className="flex justify-between py-0.5 text-slate-700">
+                                            <span>(-) Estorno de Débito:</span>
+                                            <span className="font-mono font-semibold">-{formatCurrency(res.details.debitReversal)}</span>
+                                          </div>
+                                        )}
+                                        <div className="border-t border-slate-200 pt-1.5 flex justify-between font-bold text-slate-800">
+                                          <span>(=) Débito Líquido Apurado:</span>
+                                          <span className="font-mono text-indigo-900">{formatCurrency(res.details.netDebit)}</span>
+                                        </div>
+                                        {res.details.withholdings > 0 && (
+                                          <div className="flex justify-between py-0.5 text-purple-800 font-semibold">
+                                            <span>(-) Retenções na Fonte (Lei 10.833):</span>
+                                            <span className="font-mono">-{formatCurrency(res.details.withholdings)}</span>
+                                          </div>
+                                        )}
+                                      </div>
+
+                                      {/* Coluna Créditos */}
+                                      <div className="bg-slate-50/70 p-3.5 rounded-lg border border-slate-200/80 space-y-2">
+                                        <div className="font-bold text-[11px] uppercase tracking-wider text-slate-700 border-b border-slate-200 pb-1 flex justify-between">
+                                          <span>Créditos e Exclusões</span>
+                                          <span className="text-emerald-700">Líquido: {formatCurrency(res.details.netCredit)}</span>
+                                        </div>
+                                        <div className="flex justify-between py-0.5 text-slate-600">
+                                          <span>Total Crédito (Bruto):</span>
+                                          <span className="font-mono font-semibold text-slate-800">{formatCurrency(res.details.grossCredit)}</span>
+                                        </div>
+                                        {res.details.otherCredits > 0 && (
+                                          <div className="flex justify-between py-0.5 text-emerald-800">
+                                            <span>(+) Outros Créditos (M110/M510):</span>
+                                            <span className="font-mono font-semibold">+{formatCurrency(res.details.otherCredits)}</span>
+                                          </div>
+                                        )}
+                                        {res.details.exclusions > 0 && (
+                                          <div className="flex justify-between py-0.5 text-rose-800">
+                                            <span>(-) Exclusão de Crédito:</span>
+                                            <span className="font-mono font-semibold">-{formatCurrency(res.details.exclusions)}</span>
+                                          </div>
+                                        )}
+                                        {res.details.creditReversal > 0 && (
+                                          <div className="flex justify-between py-0.5 text-rose-800">
+                                            <span>(-) Estorno de Créditos:</span>
+                                            <span className="font-mono font-semibold">-{formatCurrency(res.details.creditReversal)}</span>
+                                          </div>
+                                        )}
+                                        <div className="border-t border-slate-200 pt-1.5 flex justify-between font-bold text-slate-800">
+                                          <span>(=) Crédito Líquido Gerado:</span>
+                                          <span className="font-mono text-emerald-700">+{formatCurrency(res.details.netCredit)}</span>
+                                        </div>
+                                        <div className="flex justify-between py-0.5 text-slate-600 text-[11px]">
+                                          <span>(+) Saldo Credor Anterior:</span>
+                                          <span className="font-mono font-semibold">{formatCurrency(res.previousBalance)}</span>
+                                        </div>
+                                      </div>
+                                    </div>
                                   </div>
                                 )}
-                              </div>
+
+                                {/* 3. Memória de Abatimento PEPS (Quais meses foram consumidos) */}
+                                <div className="bg-white rounded-xl p-4 border border-slate-200 shadow-sm">
+                                  <div className="flex items-center justify-between mb-3 border-b border-slate-100 pb-2">
+                                    <div className="flex items-center gap-2">
+                                      <span className="w-2.5 h-2.5 rounded-full bg-emerald-600" />
+                                      <h4 className="font-bold text-xs uppercase tracking-wider text-slate-800">
+                                        Memória de Abatimento PEPS no Mês ({formatPeriodShort(res.period)})
+                                      </h4>
+                                    </div>
+                                    <span className="text-xs font-bold text-slate-700">
+                                      Débito Líquido: {formatCurrency(res.debit)}
+                                    </span>
+                                  </div>
+
+                                  {hasConsumed ? (
+                                    <div className="space-y-2">
+                                      <p className="text-xs text-slate-600">
+                                        O débito de {formatCurrency(res.debit)} foi compensado consumindo prioritariamente os créditos mais antigos:
+                                      </p>
+                                      <div className="overflow-x-auto">
+                                        <table className="w-full text-xs text-left">
+                                          <thead>
+                                            <tr className="bg-slate-50 text-slate-600 border-b border-slate-200 font-semibold">
+                                              <th className="py-2 px-3">Competência de Origem</th>
+                                              <th className="py-2 px-3 text-right">Valor Consumido (R$)</th>
+                                              <th className="py-2 px-3 text-center">Idade no Momento do Consumo</th>
+                                              <th className="py-2 px-3">Regra Aplicada</th>
+                                            </tr>
+                                          </thead>
+                                          <tbody className="divide-y divide-slate-100">
+                                            {res.consumedBreakdown.map((item, cIdx) => (
+                                              <tr key={cIdx} className="hover:bg-slate-50/50">
+                                                <td className="py-2 px-3 font-semibold text-slate-800">
+                                                  {formatPeriodShort(item.originPeriod)}
+                                                </td>
+                                                <td className="py-2 px-3 text-right font-mono font-bold text-indigo-700">
+                                                  {formatCurrency(item.amountConsumed)}
+                                                </td>
+                                                <td className="py-2 px-3 text-center text-slate-600">
+                                                  {item.monthsOldAtConsumption} {item.monthsOldAtConsumption === 1 ? 'mês decorrido' : 'meses decorridos'}
+                                                </td>
+                                                <td className="py-2 px-3 text-slate-500">
+                                                  PEPS / FIFO (consumo do lote mais antigo)
+                                                </td>
+                                              </tr>
+                                            ))}
+                                          </tbody>
+                                        </table>
+                                      </div>
+                                    </div>
+                                  ) : (
+                                    <div className="text-xs text-slate-500 py-2">
+                                      {res.debit === 0 ? (
+                                        'Não houve débito apurado nesta competência.'
+                                      ) : (
+                                        'Nenhum crédito disponível para abatimento.'
+                                      )}
+                                    </div>
+                                  )}
+
+                                  {res.taxPayable > 0 && (
+                                    <div className="mt-3 p-3 bg-rose-50 border border-rose-200 rounded-lg flex items-center justify-between text-xs text-rose-800">
+                                      <div className="flex items-center gap-2">
+                                        <AlertCircle className="w-4 h-4 text-rose-600 flex-shrink-0" />
+                                        <span>
+                                          Os créditos disponíveis foram insuficientes para abater todo o débito de {formatCurrency(res.debit)}.
+                                        </span>
+                                      </div>
+                                      <span className="font-bold font-mono text-sm">
+                                        DARF a Pagar: {formatCurrency(res.taxPayable)}
+                                      </span>
+                                    </div>
+                                  )}
+                                </div>
                             </div>
                           </td>
                         </tr>

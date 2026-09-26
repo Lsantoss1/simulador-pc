@@ -477,6 +477,8 @@ export const App: React.FC = () => {
               months={activeScenario.months}
               onChange={handleUpdateMonths}
               onDownloadTemplate={downloadImportTemplate}
+              pisSummary={pisSummary}
+              cofinsSummary={cofinsSummary}
             />
           </div>
         )}

@@ -12,10 +12,31 @@ export interface InitialCreditStock {
 export interface MonthlyInput {
   id: string;
   period: string; // Formato AAAA-MM
-  pisDebit: number;
-  pisCredit: number;
-  cofinsDebit: number;
-  cofinsCredit: number;
+  
+  // PIS - Valores Principais e Ajustes Detalhados
+  pisDebit: number; // Total Débito
+  pisOtherDebits?: number; // Outros Débitos (+)
+  pisBaseReduction?: number; // Ajuste BC Redução (-)
+  pisBaseIncrease?: number; // Ajuste BC Acréscimo (+)
+  pisDebitReversal?: number; // Estorno Débito (-)
+  pisWithholdings?: number; // Retenções (-)
+  pisCredit: number; // Total Crédito
+  pisOtherCredits?: number; // Outros Créditos (+)
+  pisCreditReversal?: number; // Estorno Créditos (-)
+  pisExclusions?: number; // Exclusão (-)
+
+  // COFINS - Valores Principais e Ajustes Detalhados
+  cofinsDebit: number; // Total Débito
+  cofinsOtherDebits?: number; // Outros Débitos (+)
+  cofinsBaseReduction?: number; // Ajuste BC Redução (-)
+  cofinsBaseIncrease?: number; // Ajuste BC Acréscimo (+)
+  cofinsDebitReversal?: number; // Estorno Débito (-)
+  cofinsWithholdings?: number; // Retenções (-)
+  cofinsCredit: number; // Total Crédito
+  cofinsOtherCredits?: number; // Outros Créditos (+)
+  cofinsCreditReversal?: number; // Estorno Créditos (-)
+  cofinsExclusions?: number; // Exclusão (-)
+
   notes?: string;
 }
 
@@ -43,10 +64,27 @@ export interface CreditRemainingDetail {
   status: CreditStatus;
 }
 
+export interface MonthlyTaxDetails {
+  grossDebit: number;
+  otherDebits: number;
+  baseReduction: number;
+  baseIncrease: number;
+  debitReversal: number;
+  netDebit: number;
+  withholdings: number;
+
+  grossCredit: number;
+  otherCredits: number;
+  creditReversal: number;
+  exclusions: number;
+  netCredit: number;
+}
+
 export interface MonthlyTaxResult {
   period: string;
-  debit: number;
-  creditGenerated: number;
+  debit: number; // Débito Líquido apurado
+  creditGenerated: number; // Crédito Líquido gerado
+  details: MonthlyTaxDetails; // Detalhamento dos ajustes contábeis
   previousBalance: number;
   totalAvailable: number;
   creditConsumed: number;
@@ -66,7 +104,7 @@ export interface TaxSimulationSummary {
   currentBalanceCarriedForward: number;
   totalPrescribed: number;
   activeBatchesCount: number;
-  atRiskBatchesCount: number; // > 48 meses
+  atRiskBatchesCount: number;
   resultsByMonth: MonthlyTaxResult[];
 }
 
