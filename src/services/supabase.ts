@@ -10,13 +10,17 @@ export const getStoredSupabaseConfig = () => {
   const envUrl = import.meta.env.VITE_SUPABASE_URL || '';
   const envKey = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
 
-  const storedUrl = localStorage.getItem(STORAGE_KEY_URL) || envUrl;
-  const storedKey = localStorage.getItem(STORAGE_KEY_ANON) || envKey;
+  const storedUrl = localStorage.getItem(STORAGE_KEY_URL);
+  const storedKey = localStorage.getItem(STORAGE_KEY_ANON);
   const accessKey = localStorage.getItem(STORAGE_KEY_ACCESS) || 'EMPRESA-PADRAO';
 
+  // O .env sempre tem prioridade máxima se estiver definido
+  const finalUrl = envUrl || storedUrl || '';
+  const finalKey = envKey || storedKey || '';
+
   return {
-    url: storedUrl.trim(),
-    anonKey: storedKey.trim(),
+    url: finalUrl.trim(),
+    anonKey: finalKey.trim(),
     accessKey: accessKey.trim(),
   };
 };
