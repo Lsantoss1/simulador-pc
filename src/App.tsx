@@ -28,12 +28,18 @@ import { AnalyticsCharts } from './components/AnalyticsCharts';
 import { InitialStockModal } from './components/InitialStockModal';
 import { ScenarioModal } from './components/ScenarioModal';
 import { CloudSyncModal } from './components/CloudSyncModal';
+import { LegalInfoModal } from './components/LegalInfoModal';
 import { PrintReportView } from './components/PrintReportView';
 
 import {
   Building2,
   FileCheck2,
   Cloud,
+  Table,
+  Edit3,
+  BarChart3,
+  HelpCircle,
+  ArrowRight,
 } from 'lucide-react';
 
 export const App: React.FC = () => {
@@ -43,6 +49,9 @@ export const App: React.FC = () => {
     getActiveScenarioId()
   );
 
+  // Aba Principal Ativa (Apuração, Lançamentos ou Gráficos)
+  const [activeTab, setActiveTab] = useState<'apuracao' | 'lancamentos' | 'graficos'>('apuracao');
+
   // Visão Ativa de Tributos (PIS, COFINS ou Consolidado)
   const [activeView, setActiveView] = useState<'PIS' | 'COFINS' | 'CONSOLIDATED'>('PIS');
 
@@ -50,6 +59,7 @@ export const App: React.FC = () => {
   const [isScenarioModalOpen, setIsScenarioModalOpen] = useState(false);
   const [isInitialStockModalOpen, setIsInitialStockModalOpen] = useState(false);
   const [isCloudModalOpen, setIsCloudModalOpen] = useState(false);
+  const [isLegalModalOpen, setIsLegalModalOpen] = useState(false);
 
   // Estado de Sincronização em Nuvem
   const [cloudActive, setCloudActive] = useState<boolean>(() => isCloudConfigured());
@@ -79,13 +89,11 @@ export const App: React.FC = () => {
       setSyncStatus('syncing');
       fetchScenariosFromCloud().then((cloudScenarios) => {
         if (cloudScenarios && cloudScenarios.length > 0) {
-          // Atualiza lista com dados da nuvem
           setScenarios(cloudScenarios);
           setActiveScenarioIdState(cloudScenarios[0].id);
           setLastSyncedAt(new Date());
           setSyncStatus('synced');
         } else if (cloudScenarios && cloudScenarios.length === 0) {
-          // Nuvem vazia: envia os cenários locais atuais para a nuvem
           pushAllScenariosToCloud(scenarios).then(() => {
             setLastSyncedAt(new Date());
             setSyncStatus('synced');
@@ -107,7 +115,6 @@ export const App: React.FC = () => {
         setLastSyncedAt(new Date());
         setSyncStatus('synced');
       } else {
-        // Envia dados locais atuais
         const ok = await pushAllScenariosToCloud(scenarios);
         if (ok) {
           setLastSyncedAt(new Date());
@@ -121,7 +128,7 @@ export const App: React.FC = () => {
     }
   }, [scenarios]);
 
-  // Sincronização automática para alterações locais (debounced)
+  // Sincronização automática para alterações locais
   const triggerCloudPush = useCallback((updatedScenario: Scenario) => {
     if (isCloudConfigured()) {
       setSyncStatus('syncing');
@@ -281,109 +288,140 @@ export const App: React.FC = () => {
         isCloudConfigured={cloudActive}
       />
 
-      {/* Conteúdo Principal Interativo (Oculto na impressão) */}
-      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6 no-print">
-        {/* Banner do Cenário & Síntese Rápida */}
-        <div className="bg-white rounded-2xl border border-slate-200/80 p-5 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <div className="space-y-1">
-            <div className="flex items-center gap-2">
-              <span className="p-1 rounded-md bg-indigo-50 text-indigo-700">
-                <Building2 className="w-4 h-4" />
-              </span>
-              <h2 className="text-lg font-bold text-slate-900">
-                {activeScenario.companyName}
-              </h2>
-              {activeScenario.cnpj && (
-                <span className="text-xs text-slate-500 font-mono">
-                  (CNPJ: {activeScenario.cnpj})
+      {/* Conteúdo Principal (Oculto na impressão) */}
+      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-5 space-y-5 no-print">
+        {/* Subheader Compacto & Elegante */}
+        <div className="bg-white rounded-2xl border border-slate-200/80 px-5 py-3.5 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="flex items-center gap-2.5">
+            <span className="p-1.5 rounded-lg bg-indigo-50 text-indigo-700">
+              <Building2 className="w-4 h-4" />
+            </span>
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="text-sm font-bold text-slate-800">
+                  {activeScenario.companyName}
                 </span>
-              )}
-            </div>
-            <div className="text-xs text-slate-500 flex flex-wrap items-center gap-3">
-              <span>Cenário: <strong className="text-slate-700">{activeScenario.name}</strong></span>
-              <span>•</span>
-              <span>{activeScenario.months.length} competências apuradas</span>
-              <span>•</span>
-              <span className="text-indigo-600 font-medium">Regra PEPS / FIFO ativa</span>
-              {cloudActive && (
-                <>
-                  <span>•</span>
+                <span className="text-xs text-slate-400 font-mono">
+                  • {activeScenario.name}
+                </span>
+              </div>
+              <div className="text-[11px] text-slate-500 flex items-center gap-2">
+                <span>{activeScenario.months.length} meses apurados</span>
+                {cloudActive && (
                   <span className="text-emerald-700 font-medium flex items-center gap-1">
-                    <Cloud className="w-3.5 h-3.5" />
-                    Sincronizado na Nuvem
+                    • <Cloud className="w-3 h-3" /> Nuvem Ativa
                   </span>
-                </>
-              )}
+                )}
+              </div>
             </div>
           </div>
 
-          {/* Destaque do Saldo Atual */}
-          <div className="bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 flex items-center gap-3">
-            <div>
-              <div className="text-[10px] text-slate-500 uppercase font-bold tracking-wider">
-                Saldo a Transportar Consolidado
+          <div className="flex items-center gap-3">
+            <div className="text-right">
+              <div className="text-[10px] text-slate-400 uppercase font-bold tracking-wider">
+                Saldo a Transportar Total
               </div>
-              <div className="text-lg font-black text-indigo-900 font-mono">
+              <div className="text-base font-extrabold text-indigo-900 font-mono">
                 {formatCurrency(totalBalanceNow)}
               </div>
             </div>
-            <div className="border-l border-slate-200 pl-3 text-xs text-slate-600 space-y-0.5">
-              <div>PIS: <strong className="font-mono text-indigo-700">{formatCurrency(pisSummary.currentBalanceCarriedForward)}</strong></div>
-              <div>COFINS: <strong className="font-mono text-emerald-700">{formatCurrency(cofinsSummary.currentBalanceCarriedForward)}</strong></div>
-            </div>
+
+            <button
+              onClick={() => setIsLegalModalOpen(true)}
+              className="p-1.5 text-slate-400 hover:text-indigo-600 hover:bg-slate-100 rounded-lg transition-colors text-xs flex items-center gap-1"
+              title="Informações e regras legais da EFD-Contribuições"
+            >
+              <HelpCircle className="w-4 h-4" />
+              <span className="hidden md:inline">Regras Fiscais</span>
+            </button>
           </div>
         </div>
 
-        {/* 2. Cards de KPIs e Métricas Resumo */}
-        <SummaryCards
-          pisSummary={pisSummary}
-          cofinsSummary={cofinsSummary}
-          activeView={activeView}
-        />
+        {/* 2. Seletor Dinâmico de Abas (Limpo e Focado) */}
+        <div className="flex border-b border-slate-200/80 gap-2 bg-slate-100/70 p-1 rounded-2xl text-xs font-semibold">
+          <button
+            onClick={() => setActiveTab('apuracao')}
+            className={`flex-1 py-2.5 px-4 rounded-xl flex items-center justify-center gap-2 transition-all ${
+              activeTab === 'apuracao'
+                ? 'bg-white text-indigo-700 shadow-sm font-bold'
+                : 'text-slate-600 hover:text-slate-900 hover:bg-white/50'
+            }`}
+          >
+            <Table className="w-4 h-4 text-indigo-600" />
+            <span>Apuração & Sobras de Crédito</span>
+          </button>
 
-        {/* 3. Destaque Específico da Pergunta do Usuário: "Sobrou crédito referente a algum mês e quanto foi?" */}
-        {((activeView === 'PIS' && lastPIS && lastPIS.remainingBreakdown.length > 0) ||
-          (activeView === 'COFINS' && lastCOFINS && lastCOFINS.remainingBreakdown.length > 0) ||
-          (activeView === 'CONSOLIDATED' && ((lastPIS && lastPIS.remainingBreakdown.length > 0) || (lastCOFINS && lastCOFINS.remainingBreakdown.length > 0)))) && (
-          <div className="bg-gradient-to-r from-indigo-50 via-white to-emerald-50 border border-indigo-200/80 rounded-2xl p-5 shadow-sm">
-            <div className="flex items-start gap-3">
-              <div className="p-2 rounded-xl bg-indigo-600 text-white flex-shrink-0 shadow-sm">
-                <FileCheck2 className="w-5 h-5" />
-              </div>
-              <div className="flex-1 space-y-2">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1">
-                  <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
-                    Rastreamento de Sobras: De quais meses são os créditos a transportar?
-                  </h3>
-                  <span className="text-xs font-semibold text-indigo-700">
-                    Posição na última competência ({activeScenario.months[activeScenario.months.length - 1]?.period})
-                  </span>
+          <button
+            onClick={() => setActiveTab('lancamentos')}
+            className={`flex-1 py-2.5 px-4 rounded-xl flex items-center justify-center gap-2 transition-all ${
+              activeTab === 'lancamentos'
+                ? 'bg-white text-indigo-700 shadow-sm font-bold'
+                : 'text-slate-600 hover:text-slate-900 hover:bg-white/50'
+            }`}
+          >
+            <Edit3 className="w-4 h-4 text-slate-500" />
+            <span>Lançamentos Mensais</span>
+            <span className="bg-slate-200/80 text-slate-700 text-[10px] px-1.5 py-0.5 rounded-full font-mono">
+              {activeScenario.months.length}
+            </span>
+          </button>
+
+          <button
+            onClick={() => setActiveTab('graficos')}
+            className={`flex-1 py-2.5 px-4 rounded-xl flex items-center justify-center gap-2 transition-all ${
+              activeTab === 'graficos'
+                ? 'bg-white text-indigo-700 shadow-sm font-bold'
+                : 'text-slate-600 hover:text-slate-900 hover:bg-white/50'
+            }`}
+          >
+            <BarChart3 className="w-4 h-4 text-slate-500" />
+            <span>Gráficos & Idade</span>
+          </button>
+        </div>
+
+        {/* 3. CONTEÚDO DA ABA 1: APURAÇÃO & SOBRAS (Visão Executiva) */}
+        {activeTab === 'apuracao' && (
+          <div className="space-y-5 animate-in fade-in duration-150">
+            {/* KPIs Essenciais (3 Cards Diretos) */}
+            <SummaryCards
+              pisSummary={pisSummary}
+              cofinsSummary={cofinsSummary}
+              activeView={activeView}
+            />
+
+            {/* Destaque Central: De quais meses são as sobras de crédito? */}
+            {((activeView === 'PIS' && lastPIS && lastPIS.remainingBreakdown.length > 0) ||
+              (activeView === 'COFINS' && lastCOFINS && lastCOFINS.remainingBreakdown.length > 0) ||
+              (activeView === 'CONSOLIDATED' && ((lastPIS && lastPIS.remainingBreakdown.length > 0) || (lastCOFINS && lastCOFINS.remainingBreakdown.length > 0)))) && (
+              <div className="bg-white border border-indigo-100 rounded-2xl p-4 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 rounded-xl bg-indigo-50 text-indigo-700 flex-shrink-0">
+                    <FileCheck2 className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <h3 className="text-xs font-bold text-slate-900">
+                      Origem dos Créditos Restantes a Transportar
+                    </h3>
+                    <p className="text-[11px] text-slate-500">
+                      Montante que sobrou da compensação PEPS e de qual mês ele foi gerado:
+                    </p>
+                  </div>
                 </div>
-                <p className="text-xs text-slate-600">
-                  Pela regra contábil PEPS (Primeiro que Entra, Primeiro que Sai), os créditos mais antigos foram consumidos primeiro pelos débitos apurados. 
-                  Ao término da simulação, os créditos remanescentes a transportar pertencem aos seguintes períodos de apuração:
-                </p>
 
-                {/* Tags de Origem */}
-                <div className="flex flex-wrap gap-2 pt-1">
+                <div className="flex flex-wrap gap-2">
                   {(activeView === 'PIS' || activeView === 'CONSOLIDATED') && lastPIS && (
                     lastPIS.remainingBreakdown.map((b) => (
                       <div
                         key={`highlight-pis-${b.batchId}`}
-                        className="bg-white border border-indigo-200 rounded-xl px-3 py-1.5 shadow-sm flex items-center gap-2 text-xs"
+                        className="bg-indigo-50/60 border border-indigo-200/80 rounded-xl px-2.5 py-1 text-xs flex items-center gap-1.5"
                       >
-                        <span className="font-bold text-indigo-900 bg-indigo-50 px-1.5 py-0.5 rounded text-[10px]">
-                          PIS
+                        <span className="font-bold text-indigo-900 text-[10px]">PIS</span>
+                        <span className="text-slate-600 font-medium">
+                          {formatPeriodShort(b.originPeriod)}:
                         </span>
-                        <span className="font-semibold text-slate-700">
-                          Origem {formatPeriodShort(b.originPeriod)}:
-                        </span>
-                        <strong className="text-indigo-700 font-mono">
+                        <strong className="text-indigo-900 font-mono">
                           {formatCurrency(b.remainingAmount)}
                         </strong>
-                        <span className="text-[10px] text-slate-400">
-                          (idade: {b.monthsOld}m)
-                        </span>
                       </div>
                     ))
                   )}
@@ -392,66 +430,68 @@ export const App: React.FC = () => {
                     lastCOFINS.remainingBreakdown.map((b) => (
                       <div
                         key={`highlight-cofins-${b.batchId}`}
-                        className="bg-white border border-emerald-200 rounded-xl px-3 py-1.5 shadow-sm flex items-center gap-2 text-xs"
+                        className="bg-emerald-50/60 border border-emerald-200/80 rounded-xl px-2.5 py-1 text-xs flex items-center gap-1.5"
                       >
-                        <span className="font-bold text-emerald-900 bg-emerald-50 px-1.5 py-0.5 rounded text-[10px]">
-                          COFINS
+                        <span className="font-bold text-emerald-900 text-[10px]">COFINS</span>
+                        <span className="text-slate-600 font-medium">
+                          {formatPeriodShort(b.originPeriod)}:
                         </span>
-                        <span className="font-semibold text-slate-700">
-                          Origem {formatPeriodShort(b.originPeriod)}:
-                        </span>
-                        <strong className="text-emerald-700 font-mono">
+                        <strong className="text-emerald-900 font-mono">
                           {formatCurrency(b.remainingAmount)}
                         </strong>
-                        <span className="text-[10px] text-slate-400">
-                          (idade: {b.monthsOld}m)
-                        </span>
                       </div>
                     ))
                   )}
                 </div>
               </div>
-            </div>
+            )}
+
+            {/* Tabela de Apuração com Expansão Sob Demanda */}
+            <SimulationResults
+              pisSummary={pisSummary}
+              cofinsSummary={cofinsSummary}
+              activeView={activeView}
+              onViewChange={setActiveView}
+              onNavigateToInputs={() => setActiveTab('lancamentos')}
+            />
           </div>
         )}
 
-        {/* 4. Tabela de Lançamentos Mensais (Entrada de Débitos e Créditos) */}
-        <MonthlyInputTable
-          months={activeScenario.months}
-          onChange={handleUpdateMonths}
-          onDownloadTemplate={downloadImportTemplate}
-        />
-
-        {/* 5. Tabela de Apuração e Memória de Cálculo PEPS com Sobras por Mês */}
-        <SimulationResults
-          pisSummary={pisSummary}
-          cofinsSummary={cofinsSummary}
-          activeView={activeView}
-          onViewChange={setActiveView}
-        />
-
-        {/* 6. Gráficos Analíticos de Evolução e Idade dos Créditos */}
-        <AnalyticsCharts
-          summary={activeView === 'COFINS' ? cofinsSummary : pisSummary}
-        />
-
-        {/* Guia Rápido Fiscal no Rodapé */}
-        <div className="bg-slate-100/80 border border-slate-200/80 rounded-2xl p-4 text-xs text-slate-600 flex items-start gap-3">
-          <div className="space-y-1">
-            <div className="font-bold text-slate-800">
-              Sobre as Regras da EFD-Contribuições e Legislação Não-Cumulativa
+        {/* 4. CONTEÚDO DA ABA 2: LANÇAMENTOS MENSAIS */}
+        {activeTab === 'lancamentos' && (
+          <div className="space-y-4 animate-in fade-in duration-150">
+            <div className="flex items-center justify-between bg-indigo-50/60 border border-indigo-100 rounded-2xl px-5 py-3 text-xs text-indigo-950">
+              <span>
+                Preencha os valores apurados de cada competência. Eles alimentarão a regra PEPS na aba de Apuração.
+              </span>
+              <button
+                onClick={() => setActiveTab('apuracao')}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-indigo-600 text-white font-semibold rounded-lg hover:bg-indigo-700 transition-colors shadow-sm text-xs"
+              >
+                <span>Ver Apuração & Sobras</span>
+                <ArrowRight className="w-3.5 h-3.5" />
+              </button>
             </div>
-            <p>
-              O controle de créditos a descontar de períodos anteriores (Blocos 1100 para PIS e 1500 para COFINS) adota o critério 
-              <strong> PEPS / FIFO</strong>. Os créditos decorrentes de apurações passadas não aproveitados prescrevem no prazo de <strong>5 anos (60 meses)</strong>, 
-              conforme o Decreto nº 20.910/1932 e normativas da Receita Federal do Brasil. Este simulador mantém a segregação por lote e competência original 
-              para total conformidade com a escrituração fiscal digital.
-            </p>
+
+            <MonthlyInputTable
+              months={activeScenario.months}
+              onChange={handleUpdateMonths}
+              onDownloadTemplate={downloadImportTemplate}
+            />
           </div>
-        </div>
+        )}
+
+        {/* 5. CONTEÚDO DA ABA 3: GRÁFICOS ANALÍTICOS */}
+        {activeTab === 'graficos' && (
+          <div className="space-y-4 animate-in fade-in duration-150">
+            <AnalyticsCharts
+              summary={activeView === 'COFINS' ? cofinsSummary : pisSummary}
+            />
+          </div>
+        )}
       </main>
 
-      {/* 7. Relatório Oficial Formatado para Impressão / PDF */}
+      {/* Relatório Oficial para Impressão / PDF */}
       <PrintReportView
         scenario={activeScenario}
         pisSummary={pisSummary}
@@ -488,6 +528,11 @@ export const App: React.FC = () => {
         onManualSync={handleManualSync}
         isSyncing={syncStatus === 'syncing'}
         lastSyncedAt={lastSyncedAt}
+      />
+
+      <LegalInfoModal
+        isOpen={isLegalModalOpen}
+        onClose={() => setIsLegalModalOpen(false)}
       />
     </div>
   );

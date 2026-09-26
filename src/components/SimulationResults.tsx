@@ -9,6 +9,7 @@ import {
   AlertCircle,
   Sparkles,
   Layers,
+  Edit3,
 } from 'lucide-react';
 
 interface Props {
@@ -16,6 +17,7 @@ interface Props {
   cofinsSummary: TaxSimulationSummary;
   activeView: 'PIS' | 'COFINS' | 'CONSOLIDATED';
   onViewChange: (view: 'PIS' | 'COFINS' | 'CONSOLIDATED') => void;
+  onNavigateToInputs?: () => void;
 }
 
 export const SimulationResults: React.FC<Props> = ({
@@ -23,6 +25,7 @@ export const SimulationResults: React.FC<Props> = ({
   cofinsSummary,
   activeView,
   onViewChange,
+  onNavigateToInputs,
 }) => {
   // Estado para expandir linhas individuais da tabela
   const [expandedRows, setExpandedRows] = useState<Record<string, boolean>>({});
@@ -119,6 +122,17 @@ export const SimulationResults: React.FC<Props> = ({
               Recolher
             </button>
           </div>
+
+          {onNavigateToInputs && (
+            <button
+              onClick={onNavigateToInputs}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-indigo-700 bg-indigo-50 hover:bg-indigo-100 rounded-lg border border-indigo-200 transition-colors shadow-sm"
+              title="Ir para a tela de lançamento de débitos e créditos"
+            >
+              <Edit3 className="w-3.5 h-3.5 text-indigo-600" />
+              Lançar / Editar Meses
+            </button>
+          )}
         </div>
       </div>
 
