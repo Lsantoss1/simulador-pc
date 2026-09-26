@@ -7,16 +7,25 @@ const STORAGE_KEY_ACCESS = 'simulador_company_access_key_v1';
 let clientInstance: SupabaseClient | null = null;
 
 export const getStoredSupabaseConfig = () => {
-  const envUrl = import.meta.env.VITE_SUPABASE_URL || '';
-  const envKey = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
+  let configUrl = '';
+  let configKey = '';
+
+  try {
+    if (typeof __SUPABASE_CONFIG__ !== 'undefined') {
+      configUrl = __SUPABASE_CONFIG__.url || '';
+      configKey = __SUPABASE_CONFIG__.anonKey || '';
+    }
+  } catch {
+    // fallback
+  }
 
   const storedUrl = localStorage.getItem(STORAGE_KEY_URL);
   const storedKey = localStorage.getItem(STORAGE_KEY_ANON);
   const accessKey = localStorage.getItem(STORAGE_KEY_ACCESS) || 'EMPRESA-PADRAO';
 
-  // O .env sempre tem prioridade máxima se estiver definido
-  const finalUrl = envUrl || storedUrl || '';
-  const finalKey = envKey || storedKey || '';
+  // Prioridade para variáveis de Configuração/Privadas sobre o cache local antigo
+  const finalUrl = configUrl || storedUrl || '';
+  const finalKey = configKey || storedKey || '';
 
   return {
     url: finalUrl.trim(),

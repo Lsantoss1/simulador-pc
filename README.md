@@ -38,8 +38,8 @@ npm run dev
 O simulador possui integração nativa com o **Supabase** via variáveis de ambiente no arquivo `.env`:
 
 ```env
-VITE_SUPABASE_URL=https://seu-projeto.supabase.co
-VITE_SUPABASE_ANON_KEY=sua-chave-publica-anon
+SUPABASE_URL=https://seu-projeto.supabase.co
+SUPABASE_ANON_KEY=sua-chave-publica-anon
 ```
 
 ### Script SQL para Criar a Tabela no Supabase
